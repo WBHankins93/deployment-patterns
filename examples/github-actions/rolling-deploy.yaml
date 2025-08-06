@@ -1,0 +1,18 @@
+name: Rolling Deployment
+
+on:
+  workflow_dispatch:
+
+jobs:
+  rolling-deploy:
+    runs-on: ubuntu-latest
+    name: Deploy in Batches
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Rolling Deployment
+        run: |
+          chmod +x ./scripts/rolling-batch-deploy.sh
+          ./scripts/rolling-batch-deploy.sh

@@ -43,5 +43,6 @@ deployment-patterns-guide/
 │   ├── github-actions/
 │   └── helm-deployments/
 └── scripts/
-    └── deploy.sh
+    ├── deploy.sh
+    └── rolling-batch-deploy.sh
 ```
