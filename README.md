@@ -42,5 +42,6 @@ deployment-patterns-guide/
 ├── examples/               # Real-world YAMLs
 │   ├── github-actions/
 │   └── helm-deployments/
-└── LICENSE
+└── scripts/
+    ├── big-bang.md
 ```
