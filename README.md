@@ -21,8 +21,6 @@ Each pattern includes:
 
 ## 🚀 Why This Project Exists
 
-This guide was inspired by the excellent post at [systemdesign.one](https://newsletter.systemdesign.one/p/deployment-patterns), but rewritten in my own words for:
-
 - ✍️ **Deep personal understanding**
 - 📢 **Sharing knowledge with others**
 - 💼 **Showcasing SRE/DevOps readiness**
