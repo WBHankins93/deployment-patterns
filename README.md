@@ -43,5 +43,5 @@ deployment-patterns-guide/
 │   ├── github-actions/
 │   └── helm-deployments/
 └── scripts/
-    ├── big-bang.md
+    └── deploy.sh
 ```

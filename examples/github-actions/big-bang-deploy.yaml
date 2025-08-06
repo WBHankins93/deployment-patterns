@@ -1,0 +1,31 @@
+name: Big Bang Deployment
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  big-bang-deploy:
+    name: Deploy to All Servers
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up environment
+        run: |
+          echo "Installing dependencies..."
+          # Placeholder for actual setup steps
+
+      - name: Run Big Bang Deployment
+        run: |
+          echo "Deploying to ALL servers..."
+          bash ./scripts/deploy.sh
+
+      - name: Post-deploy Smoke Test
+        run: |
+          echo "Running smoke tests..."
+          echo "run the command below in production with replaced URL."
+          echo "curl -f http://your-app-url.com/health || exit 1"
