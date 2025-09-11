@@ -1,0 +1,73 @@
+# Big Bang Deployment Values
+replicaCount: 3
+
+image:
+  repository: myapp
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+# Big Bang strategy configuration
+strategy:
+  type: Recreate  # This ensures all pods are terminated before new ones start
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  hosts:
+    - host: myapp.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+# Health checks
+healthCheck:
+  enabled: true
+  path: /health
+  port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Resource limits
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+# Environment-specific configurations
+env: "production"
+logLevel: "info"
+
+# ConfigMap data
+config:
+  database_url: "postgresql://user:pass@db:5432/myapp"
+  redis_url: "redis://redis:6379"
+
+# Monitoring and observability
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    path: /metrics
+
+# Security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 2000
+
+# Override names
+nameOverride: ""
+fullnameOverride: ""

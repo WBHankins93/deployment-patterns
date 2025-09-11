@@ -1,0 +1,94 @@
+# Rolling Deployment Values
+replicaCount: 6
+
+image:
+  repository: myapp
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+# Rolling strategy configuration
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1        # Keep 5/6 pods running during update
+    maxSurge: 2             # Allow up to 8 pods during update
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+# Enhanced health checks for rolling deployments
+healthCheck:
+  enabled: true
+  liveness:
+    path: /health
+    port: 8080
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readiness:
+    path: /ready
+    port: 8080
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 2
+
+# Rolling deployment specific settings
+rolling:
+  # Time to wait for pod to be ready before considering it failed
+  progressDeadlineSeconds: 600
+  # Minimum time pod must be ready before being available
+  minReadySeconds: 10
+
+# Pod Disruption Budget for rolling deployments
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 4  # Ensure at least 4 pods always available
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Resource limits (more conservative for rolling)
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Anti-affinity to spread pods across nodes
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app.kubernetes.io/name
+            operator: In
+            values:
+            - rolling-app
+        topologyKey: kubernetes.io/hostname
+
+# Environment configuration
+env: "production"
+logLevel: "info"
+
+# ConfigMap data
+config:
+  database_url: "postgresql://user:pass@db:5432/myapp"
+  redis_url: "redis://redis:6379"
+  cache_ttl: "300"
+
+# Override names
+nameOverride: ""
+fullnameOverride: ""
