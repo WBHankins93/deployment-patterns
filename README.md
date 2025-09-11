@@ -4,6 +4,42 @@ Welcome to your comprehensive guide on **deployment patterns** — designed to t
 
 This repository provides detailed implementations, real-world examples, and practical tools for five foundational deployment strategies.
 
+## 📑 Table of Contents
+
+- [🎯 Deployment Patterns Covered](#-deployment-patterns-covered)
+- [🚀 Quick Start](#-quick-start)
+  - [Choose Your Pattern](#choose-your-pattern)
+  - [GitHub Actions Integration](#github-actions-integration)
+  - [Kubernetes/Helm Deployment](#kuberneteshelm-deployment)
+- [📁 Repository Structure](#-repository-structure)
+- [✨ Enhanced Features](#-enhanced-features)
+  - [🔍 Visual Learning](#-visual-learning)
+  - [🛡️ Production-Ready Scripts](#️-production-ready-scripts)
+  - [📊 Monitoring Integration](#-monitoring-integration)
+  - [🏗️ Infrastructure as Code](#️-infrastructure-as-code)
+- [🎓 Learning Path](#-learning-path)
+  - [Beginner → Intermediate](#beginner--intermediate)
+  - [Intermediate → Advanced](#intermediate--advanced)
+- [🏭 Real-World Context](#-real-world-context)
+  - [Startup Journey (Personal Experience)](#startup-journey-personal-experience)
+  - [Industry Examples](#industry-examples)
+- [🔧 Implementation Examples](#-implementation-examples)
+  - [Big Bang Script Usage](#big-bang-script-usage)
+  - [Rolling Deployment Options](#rolling-deployment-options)
+- [📈 Metrics & Success Criteria](#-metrics--success-criteria)
+  - [Key Performance Indicators](#key-performance-indicators)
+  - [Monitoring Dashboards](#monitoring-dashboards)
+- [🚨 Emergency Procedures](#-emergency-procedures)
+  - [Quick Rollback Commands](#quick-rollback-commands)
+  - [Incident Response](#incident-response)
+- [🤝 Contributing](#-contributing)
+  - [Adding New Patterns](#adding-new-patterns)
+  - [Improving Existing Patterns](#improving-existing-patterns)
+- [📚 Additional Resources](#-additional-resources)
+  - [Learning Materials](#learning-materials)
+  - [External References](#external-references)
+- [🎯 Next Steps](#-next-steps)
+
 ---
 
 ## 🎯 Deployment Patterns Covered
