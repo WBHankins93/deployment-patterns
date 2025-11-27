@@ -1,0 +1,82 @@
+# Docker Compose for Blue-Green Deployment Testing
+# 
+# Usage:
+#   docker-compose -f docker-compose.blue-green.yml up -d
+#
+# To simulate Blue-Green deployment:
+#   1. Deploy Green environment with new version
+#   2. Test Green environment
+#   3. Switch traffic from Blue to Green
+#   4. Keep Blue running for quick rollback
+
+version: '3.8'
+
+services:
+  # Blue environment (current production)
+  app-blue:
+    image: nginx:1.21-alpine  # Change to your app image
+    container_name: blue-green-app-blue
+    environment:
+      - ENV=production
+      - VERSION=v1.0.0
+      - ENVIRONMENT=blue
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app-network
+    labels:
+      - "deployment.pattern=blue-green"
+      - "deployment.environment=blue"
+      - "deployment.version=v1.0.0"
+
+  # Green environment (new version)
+  app-green:
+    image: nginx:1.22-alpine  # Change to your new app image
+    container_name: blue-green-app-green
+    environment:
+      - ENV=production
+      - VERSION=v2.0.0
+      - ENVIRONMENT=green
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app-network
+    labels:
+      - "deployment.pattern=blue-green"
+      - "deployment.environment=green"
+      - "deployment.version=v2.0.0"
+
+  # Load balancer (switches between Blue and Green)
+  nginx-lb:
+    image: nginx:alpine
+    container_name: blue-green-lb
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx-blue-green-lb.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app-blue
+      - app-green
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+# Blue-Green deployment simulation:
+# 1. Start both environments: docker-compose -f docker-compose.blue-green.yml up -d
+# 2. Traffic goes to Blue (default in nginx config)
+# 3. Test Green: curl http://localhost:8000/green/health
+# 4. Switch traffic: Update nginx-blue-green-lb.conf to route to Green
+# 5. Reload nginx: docker exec blue-green-lb nginx -s reload
+# 6. Monitor and rollback if needed by switching back to Blue
+

@@ -1,0 +1,68 @@
+# Docker Compose for Big Bang Deployment Testing
+# 
+# Usage:
+#   docker-compose -f docker-compose.big-bang.yml up -d
+#   docker-compose -f docker-compose.big-bang.yml down
+#
+# To simulate deployment:
+#   1. Update image tag in docker-compose.yml
+#   2. docker-compose -f docker-compose.big-bang.yml up -d --force-recreate
+
+version: '3.8'
+
+services:
+  # Application service - Big Bang strategy
+  app:
+    image: nginx:1.21-alpine  # Change to your app image
+    container_name: big-bang-app
+    ports:
+      - "8080:80"
+    environment:
+      - ENV=local
+      - VERSION=v1.0.0
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app-network
+    labels:
+      - "deployment.pattern=big-bang"
+      - "deployment.version=v1.0.0"
+
+  # Health check endpoint (simple HTTP server)
+  health-check:
+    image: nginx:alpine
+    container_name: big-bang-health
+    ports:
+      - "8081:80"
+    volumes:
+      - ./health-check:/usr/share/nginx/html:ro
+    networks:
+      - app-network
+
+  # Load balancer (for testing)
+  nginx-lb:
+    image: nginx:alpine
+    container_name: big-bang-lb
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx-lb.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+# To simulate Big Bang deployment:
+# 1. Stop all containers: docker-compose -f docker-compose.big-bang.yml down
+# 2. Update image tag in this file
+# 3. Start containers: docker-compose -f docker-compose.big-bang.yml up -d
+# This simulates the downtime of Big Bang deployment
+

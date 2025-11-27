@@ -1,0 +1,80 @@
+# Docker Compose for Rolling Deployment Testing
+# 
+# Usage:
+#   docker-compose -f docker-compose.rolling.yml up -d
+#   docker-compose -f docker-compose.rolling.yml scale app=6
+#
+# To simulate rolling deployment:
+#   1. Update image tag for app-v2 service
+#   2. Gradually scale down app-v1 and scale up app-v2
+#   3. Example: docker-compose -f docker-compose.rolling.yml up -d --scale app-v1=4 --scale app-v2=2
+
+version: '3.8'
+
+services:
+  # Version 1 (current)
+  app-v1:
+    image: nginx:1.21-alpine  # Change to your app image
+    container_name: rolling-app-v1
+    environment:
+      - ENV=local
+      - VERSION=v1.0.0
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app-network
+    labels:
+      - "deployment.pattern=rolling"
+      - "deployment.version=v1.0.0"
+
+  # Version 2 (new)
+  app-v2:
+    image: nginx:1.22-alpine  # Change to your new app image
+    container_name: rolling-app-v2
+    environment:
+      - ENV=local
+      - VERSION=v2.0.0
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app-network
+    labels:
+      - "deployment.pattern=rolling"
+      - "deployment.version=v2.0.0"
+    deploy:
+      replicas: 0  # Start with 0, scale up gradually
+
+  # Load balancer (routes to both versions)
+  nginx-lb:
+    image: nginx:alpine
+    container_name: rolling-lb
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx-rolling-lb.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app-v1
+      - app-v2
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+# Rolling deployment simulation steps:
+# 1. Start with all v1: docker-compose -f docker-compose.rolling.yml up -d --scale app-v1=6 --scale app-v2=0
+# 2. Deploy batch 1: docker-compose -f docker-compose.rolling.yml up -d --scale app-v1=4 --scale app-v2=2
+# 3. Wait and verify health
+# 4. Deploy batch 2: docker-compose -f docker-compose.rolling.yml up -d --scale app-v1=2 --scale app-v2=4
+# 5. Wait and verify health
+# 6. Complete: docker-compose -f docker-compose.rolling.yml up -d --scale app-v1=0 --scale app-v2=6
+
