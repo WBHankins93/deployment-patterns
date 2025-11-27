@@ -2,7 +2,7 @@
 
 Welcome to your comprehensive guide on **deployment patterns** — designed to teach, reinforce, and showcase best practices in production deployments for SREs and DevOps engineers.
 
-This repository provides detailed implementations, real-world examples, and practical tools for five foundational deployment strategies.
+This repository provides detailed implementations, real-world examples, and practical tools for seven foundational deployment strategies.
 
 ## 📑 Table of Contents
 
@@ -48,9 +48,11 @@ This repository provides detailed implementations, real-world examples, and prac
 |---------|--------|------------|------------|----------|
 | **[Big Bang](patterns/big-bang.md)** | ✅ Complete | 🔴 High | 🟢 Low | Internal tools, scheduled maintenance |
 | **[Rolling](patterns/rolling.md)** | ✅ Complete | 🟡 Medium | 🟡 Medium | Production APIs, zero-downtime required |
-| **Blue-Green** | 🚧 Planned | 🟢 Low | 🟡 Medium | Critical systems, instant rollback |
-| **Canary** | 🚧 Planned | 🟢 Low | 🔴 High | User validation, gradual rollouts |
-| **Feature Flags** | 🚧 Planned | 🟡 Medium | 🔴 High | A/B testing, runtime control |
+| **[Shadow](patterns/shadow.md)** | ✅ Complete | 🟢 Low | 🔴 High | Production validation, zero user risk |
+| **[A/B Testing](patterns/ab-testing.md)** | ✅ Complete | 🟢 Low | 🔴 High | Data-driven feature comparison |
+| **[Blue-Green](patterns/blue-green.md)** | 🚧 Planned | 🟢 Low | 🟡 Medium | Critical systems, instant rollback |
+| **[Canary](patterns/canary.md)** | 🚧 Planned | 🟢 Low | 🔴 High | User validation, gradual rollouts |
+| **[Feature Flags](patterns/feature-toggle.md)** | 🚧 Planned | 🟡 Medium | 🔴 High | Runtime control, experimentation |
 
 ---
 
@@ -103,10 +105,12 @@ deployment-patterns-guide/
 │   └── troubleshooting.md          # Common issues & solutions
 ├── 🎯 patterns/
 │   ├── big-bang.md                 # ✅ Big Bang implementation
-│   ├── rolling.md                  # ✅ Rolling implementation  
-│   ├── blue-green.md               # 🚧 Coming soon
-│   ├── canary.md                   # 🚧 Coming soon
-│   └── feature-toggle.md           # 🚧 Coming soon
+│   ├── rolling.md                  # ✅ Rolling implementation
+│   ├── shadow.md                   # ✅ Shadow (traffic mirroring)
+│   ├── ab-testing.md               # ✅ A/B Testing deployment
+│   ├── blue-green.md               # 🚧 Planned
+│   ├── canary.md                   # 🚧 Planned
+│   └── feature-toggle.md           # 🚧 Planned
 ├── 📊 diagrams/                    # ASCII diagrams in docs
 ├── 🏗️ examples/
 │   ├── github-actions/             # CI/CD workflows
@@ -162,9 +166,11 @@ Rolling:  v1 → v1+v2 → v2 (gradual)
 3. **Implement Monitoring** - Add observability
 
 ### Intermediate → Advanced  
-4. **Blue-Green Strategy** - Master instant rollbacks
-5. **Canary Deployments** - Gradual user validation
-6. **Feature Flags** - Runtime control and experimentation
+4. **Shadow Deployment** - Production validation with zero user risk
+5. **A/B Testing** - Data-driven feature decisions
+6. **Blue-Green Strategy** - Master instant rollbacks
+7. **Canary Deployments** - Gradual user validation
+8. **Feature Flags** - Runtime control and experimentation
 
 ---
 
@@ -179,7 +185,12 @@ Rolling:  v1 → v1+v2 → v2 (gradual)
 - ✅ Zero downtime, improved confidence
 - ❌ Needed better validation for critical features
 
-**Phase 3**: Blue-Green for payment system (10K users)
+**Phase 3**: Shadow deployment for payment system validation (10K users)
+- ✅ Zero user risk during validation
+- ✅ Caught edge cases before production
+- ❌ Higher infrastructure costs
+
+**Phase 4**: Blue-Green for payment system (10K users)
 - ✅ Instant rollback capability
 - ❌ Higher infrastructure costs
 
@@ -187,6 +198,8 @@ Rolling:  v1 → v1+v2 → v2 (gradual)
 - **Netflix**: Canary + Feature Flags for recommendation engine
 - **GitHub**: Rolling deployments for web application
 - **Stripe**: Blue-Green for payment processing systems
+- **Amazon**: Shadow deployments for performance validation
+- **Google**: A/B Testing for search algorithm improvements
 
 ---
 
@@ -290,10 +303,12 @@ kubectl rollout undo deployment/myapp
 ## 🎯 Next Steps
 
 1. **Explore the patterns** - Start with [Big Bang](patterns/big-bang.md) or [Rolling](patterns/rolling.md)
-2. **Try the scripts** - Run deployments in your local environment
-3. **Adapt for your stack** - Modify examples for your infrastructure
-4. **Add monitoring** - Implement the observability examples
-5. **Scale up** - Apply to your production systems
+2. **Use the decision guide** - [Choose the right pattern](docs/decision-guide.md) for your use case
+3. **Try the scripts** - Run deployments in your local environment
+4. **Test locally** - Use [Docker Compose examples](examples/docker-compose/) for local testing
+5. **Add monitoring** - Implement the [observability examples](examples/monitoring/)
+6. **Adapt for your stack** - Modify examples for your infrastructure
+7. **Scale up** - Apply to your production systems
 
 ---
 
