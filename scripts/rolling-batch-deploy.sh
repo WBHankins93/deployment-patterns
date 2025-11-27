@@ -2,10 +2,65 @@
 set -euo pipefail
 
 # Enhanced Rolling Deployment Script
-# Usage: ./rolling-batch-deploy.sh [version] [batch-size]
+#
+# This script performs a Rolling deployment - gradually replacing instances
+# of the application in batches, ensuring zero downtime.
+#
+# Usage:
+#   ./scripts/rolling-batch-deploy.sh [version] [batch-size]
+#
+# Options:
+#   version          - Version to deploy (default: "latest")
+#   batch-size       - Number of servers to update per batch (default: 1)
+#
+# Environment Variables:
+#   HEALTH_CHECK_URL        - Health check endpoint (default: http://localhost:8080/health)
+#   HEALTH_CHECK_TIMEOUT    - Health check timeout in seconds (default: 10)
+#   BATCH_DELAY             - Delay between batches in seconds (default: 30)
+#   ROLLBACK_ON_FAILURE     - Auto-rollback on failure (default: true)
+#
+# Examples:
+#   ./scripts/rolling-batch-deploy.sh v2.0.0 1
+#   ./scripts/rolling-batch-deploy.sh v2.0.0 3
+#   ROLLBACK_ON_FAILURE=false ./scripts/rolling-batch-deploy.sh v2.0.0 2
 
+usage() {
+    cat << EOF
+Rolling Batch Deployment Script
+
+Usage:
+  ./scripts/rolling-batch-deploy.sh [version] [batch-size]
+
+Arguments:
+  version          Version to deploy (default: "latest")
+  batch-size       Number of servers to update per batch (default: 1)
+
+Environment Variables:
+  HEALTH_CHECK_URL        Health check endpoint URL
+                          (default: http://localhost:8080/health)
+  HEALTH_CHECK_TIMEOUT    Health check timeout in seconds (default: 10)
+  BATCH_DELAY             Delay between batches in seconds (default: 30)
+  ROLLBACK_ON_FAILURE     Auto-rollback on failure: true|false (default: true)
+
+Examples:
+  ./scripts/rolling-batch-deploy.sh v2.0.0 1
+  ./scripts/rolling-batch-deploy.sh v2.0.0 3
+  ROLLBACK_ON_FAILURE=false ./scripts/rolling-batch-deploy.sh v2.0.0 2
+
+For more information, see: patterns/rolling.md
+EOF
+    exit 1
+}
+
+# Parse arguments
 VERSION=${1:-"latest"}
 BATCH_SIZE=${2:-1}
+
+# Show usage if help requested
+if [ "$VERSION" = "-h" ] || [ "$VERSION" = "--help" ]; then
+    usage
+fi
+
 HEALTH_CHECK_URL=${HEALTH_CHECK_URL:-"http://localhost:8080/health"}
 HEALTH_CHECK_TIMEOUT=${HEALTH_CHECK_TIMEOUT:-10}
 BATCH_DELAY=${BATCH_DELAY:-30}
@@ -154,9 +209,29 @@ show_progress() {
 
 # Function to validate batch size
 validate_batch_size() {
+    # Check if batch size is a positive integer
+    if ! [[ "$BATCH_SIZE" =~ ^[0-9]+$ ]]; then
+        error "Invalid batch size: $BATCH_SIZE. Must be a positive integer"
+        exit 1
+    fi
+    
     if [ $BATCH_SIZE -le 0 ] || [ $BATCH_SIZE -gt $TOTAL_SERVERS ]; then
         error "Invalid batch size: $BATCH_SIZE. Must be between 1 and $TOTAL_SERVERS"
         exit 1
+    fi
+    
+    # Check if required tools are available
+    local missing_tools=()
+    command -v curl >/dev/null 2>&1 || missing_tools+=("curl")
+    command -v timeout >/dev/null 2>&1 || missing_tools+=("timeout")
+    
+    if [ ${#missing_tools[@]} -gt 0 ]; then
+        error "Required tools missing: ${missing_tools[*]}. Please install them and try again."
+    fi
+    
+    # Validate health check URL format
+    if [[ ! "$HEALTH_CHECK_URL" =~ ^https?:// ]]; then
+        error "Invalid HEALTH_CHECK_URL format: $HEALTH_CHECK_URL (must start with http:// or https://)"
     fi
     
     info "Using batch size: $BATCH_SIZE"

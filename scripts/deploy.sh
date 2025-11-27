@@ -2,10 +2,59 @@
 set -euo pipefail
 
 # Enhanced Big Bang Deployment Script
-# Usage: ./scripts/deploy.sh [version] [--rollback]
+# 
+# This script performs a Big Bang deployment - replacing all instances
+# of the application with a new version simultaneously.
+#
+# Usage:
+#   ./scripts/deploy.sh [version] [--rollback]
+#
+# Options:
+#   version          - Version to deploy (default: "latest")
+#   --rollback       - Rollback to previous version
+#
+# Environment Variables:
+#   HEALTH_CHECK_URL - Health check endpoint (default: http://localhost:8080/health)
+#
+# Examples:
+#   ./scripts/deploy.sh v2.0.0
+#   ./scripts/deploy.sh v2.0.0 --rollback
+#   HEALTH_CHECK_URL=https://api.example.com/health ./scripts/deploy.sh v2.0.0
 
+usage() {
+    cat << EOF
+Big Bang Deployment Script
+
+Usage:
+  ./scripts/deploy.sh [version] [--rollback]
+
+Arguments:
+  version          Version to deploy (default: "latest")
+  --rollback       Rollback to previous version
+
+Environment Variables:
+  HEALTH_CHECK_URL Health check endpoint URL
+                   (default: http://localhost:8080/health)
+
+Examples:
+  ./scripts/deploy.sh v2.0.0
+  ./scripts/deploy.sh v1.9.0 --rollback
+  HEALTH_CHECK_URL=https://api.example.com/health ./scripts/deploy.sh v2.0.0
+
+For more information, see: patterns/big-bang.md
+EOF
+    exit 1
+}
+
+# Parse arguments
 VERSION=${1:-"latest"}
 ROLLBACK_FLAG=${2:-""}
+
+# Show usage if help requested
+if [ "$VERSION" = "-h" ] || [ "$VERSION" = "--help" ]; then
+    usage
+fi
+
 HEALTH_CHECK_URL=${HEALTH_CHECK_URL:-"http://localhost:8080/health"}
 MAX_RETRIES=5
 RETRY_DELAY=10
@@ -89,12 +138,22 @@ pre_deploy_validation() {
     log "🔍 Running pre-deployment validation..."
     
     # Check if required tools are available
-    command -v git >/dev/null 2>&1 || error "git is required but not installed"
-    command -v curl >/dev/null 2>&1 || error "curl is required but not installed"
+    local missing_tools=()
+    command -v git >/dev/null 2>&1 || missing_tools+=("git")
+    command -v curl >/dev/null 2>&1 || missing_tools+=("curl")
+    
+    if [ ${#missing_tools[@]} -gt 0 ]; then
+        error "Required tools missing: ${missing_tools[*]}. Please install them and try again."
+    fi
     
     # Validate version format (basic check)
-    if [[ "$VERSION" != "latest" && ! "$VERSION" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        warning "Version format may be invalid: $VERSION"
+    if [[ "$VERSION" != "latest" && ! "$VERSION" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
+        warning "Version format may be invalid: $VERSION (expected: v1.2.3 or 1.2.3)"
+    fi
+    
+    # Validate health check URL format
+    if [[ ! "$HEALTH_CHECK_URL" =~ ^https?:// ]]; then
+        error "Invalid HEALTH_CHECK_URL format: $HEALTH_CHECK_URL (must start with http:// or https://)"
     fi
     
     success "Pre-deployment validation passed"
