@@ -1,0 +1,227 @@
+# Shadow Deployment Workflow (Traffic Mirroring)
+name: Shadow Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target Environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+      mirror_percentage:
+        description: 'Percentage of traffic to mirror (1-100)'
+        required: false
+        default: '100'
+        type: string
+      shadow_duration:
+        description: 'Shadow deployment duration in minutes'
+        required: false
+        default: '60'
+        type: string
+
+env:
+  HEALTH_CHECK_URL: ${{ vars.HEALTH_CHECK_URL || 'http://localhost:8080/health' }}
+  SHADOW_DURATION: ${{ github.event.inputs.shadow_duration || '60' }}
+  
+jobs:
+  validate:
+    name: Pre-deployment Validation
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Determine Version
+        id: version
+        run: |
+          VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.1.0-${GITHUB_SHA::8}")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Shadow deployment version: $VERSION"
+          
+      - name: Validate Shadow Configuration
+        run: |
+          MIRROR_PCT=${{ github.event.inputs.mirror_percentage || '100' }}
+          if [ $MIRROR_PCT -lt 1 ] || [ $MIRROR_PCT -gt 100 ]; then
+            echo "❌ Invalid mirror percentage: $MIRROR_PCT (must be 1-100)"
+            exit 1
+          fi
+          echo "✅ Mirror percentage validation passed: $MIRROR_PCT%"
+          
+      - name: Check Service Mesh Availability
+        run: |
+          echo "Checking for service mesh (Istio) availability..."
+          # In production: kubectl get crd | grep istio
+          echo "✅ Service mesh check passed (simulated)"
+
+  deploy-shadow:
+    name: Deploy Shadow Version
+    runs-on: ubuntu-latest
+    needs: validate
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Environment Variables
+        run: |
+          echo "VERSION=${{ needs.validate.outputs.version }}" >> $GITHUB_ENV
+          echo "ENVIRONMENT=${{ github.event.inputs.environment || 'staging' }}" >> $GITHUB_ENV
+          echo "MIRROR_PCT=${{ github.event.inputs.mirror_percentage || '100' }}" >> $GITHUB_ENV
+
+      - name: Build Shadow Version
+        run: |
+          echo "Building shadow version $VERSION..."
+          # In production: docker build, npm build, etc.
+          sleep 2
+          echo "✅ Build completed"
+
+      - name: Deploy Shadow Version
+        run: |
+          echo "👻 Deploying Shadow Version..."
+          echo "Environment: $ENVIRONMENT"
+          echo "Version: $VERSION"
+          echo "Mirror Percentage: $MIRROR_PCT%"
+          
+          # In production: Deploy shadow version alongside active
+          # kubectl apply -f k8s/shadow-deployment.yaml
+          # kubectl apply -f k8s/virtualservice-shadow.yaml
+          
+          echo "✅ Shadow version deployed (not serving traffic)"
+
+      - name: Configure Traffic Mirroring
+        run: |
+          echo "🪞 Configuring traffic mirroring..."
+          echo "Mirroring $MIRROR_PCT% of traffic to shadow version"
+          
+          # In production: Update Istio VirtualService or Nginx config
+          # kubectl apply -f k8s/virtualservice-mirror.yaml
+          # OR update Nginx mirror configuration
+          
+          echo "✅ Traffic mirroring configured"
+
+      - name: Verify Shadow Deployment
+        run: |
+          echo "🔍 Verifying shadow deployment..."
+          
+          # Wait for shadow pods to be ready
+          sleep 10
+          
+          # Check shadow version health
+          echo "Checking shadow version health..."
+          # In production: kubectl get pods -l version=shadow
+          
+          echo "✅ Shadow deployment verified"
+
+  monitor-shadow:
+    name: Monitor Shadow Deployment
+    runs-on: ubuntu-latest
+    needs: [validate, deploy-shadow]
+    if: always()
+    
+    steps:
+      - name: Set up Monitoring
+        run: |
+          echo "📊 Setting up shadow deployment monitoring..."
+          echo "Monitoring duration: ${{ env.SHADOW_DURATION }} minutes"
+          
+          # In production: Set up Prometheus/Grafana dashboards
+          # Configure alerts for shadow version
+          
+      - name: Monitor Shadow Metrics
+        run: |
+          echo "📈 Monitoring shadow version metrics..."
+          echo "Comparing shadow vs active version:"
+          echo "  - Error rates"
+          echo "  - Response times"
+          echo "  - Throughput"
+          echo "  - Resource utilization"
+          
+          # In production: Query Prometheus metrics
+          # Compare shadow metrics to baseline
+          
+          # Simulate monitoring period
+          echo "Monitoring for ${{ env.SHADOW_DURATION }} minutes..."
+          sleep 5
+          
+      - name: Generate Shadow Report
+        run: |
+          echo "📋 Generating shadow deployment report..."
+          
+          cat << EOF > shadow-report.txt
+          Shadow Deployment Report
+          =======================
+          Version: ${{ needs.validate.outputs.version }}
+          Environment: ${{ github.event.inputs.environment || 'staging' }}
+          Mirror Percentage: ${{ github.event.inputs.mirror_percentage || '100' }}%
+          Duration: ${{ env.SHADOW_DURATION }} minutes
+          
+          Metrics Comparison:
+          - Error Rate: Shadow vs Active
+          - Latency: Shadow vs Active
+          - Throughput: Shadow vs Active
+          
+          Issues Found: [To be populated from monitoring]
+          Recommendation: [To be populated from analysis]
+          EOF
+          
+          cat shadow-report.txt
+          
+      - name: Upload Shadow Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: shadow-deployment-report
+          path: shadow-report.txt
+
+  post-shadow:
+    name: Post-Shadow Actions
+    runs-on: ubuntu-latest
+    needs: [validate, deploy-shadow, monitor-shadow]
+    if: always()
+    
+    steps:
+      - name: Analyze Shadow Results
+        run: |
+          echo "🔍 Analyzing shadow deployment results..."
+          
+          # In production: Analyze metrics, compare versions
+          # Determine if shadow version is ready for production
+          
+          echo "✅ Analysis complete"
+          
+      - name: Decision Point
+        run: |
+          echo "🎯 Shadow Deployment Decision Point"
+          echo "===================================="
+          echo ""
+          echo "Based on shadow deployment analysis:"
+          echo "  [ ] Proceed to production deployment"
+          echo "  [ ] Fix issues and re-run shadow"
+          echo "  [ ] Abandon this version"
+          echo ""
+          echo "Review the shadow deployment report artifact"
+          echo "and monitoring metrics before proceeding."
+          
+      - name: Cleanup Shadow (Optional)
+        if: github.event.inputs.cleanup_shadow == 'true'
+        run: |
+          echo "🧹 Cleaning up shadow deployment..."
+          # In production: kubectl delete deployment shadow-version
+          # kubectl delete virtualservice shadow-mirror
+          echo "✅ Shadow deployment cleaned up"
+          
+      - name: Send Notifications
+        run: |
+          echo "📢 Sending shadow deployment notifications..."
+          # In production: Slack, email, PagerDuty
+          echo "Team notified of shadow deployment status"
+
