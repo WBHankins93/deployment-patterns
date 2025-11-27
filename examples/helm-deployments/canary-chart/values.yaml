@@ -1,0 +1,108 @@
+# Canary Deployment Values
+replicaCount: 6
+
+image:
+  repository: myapp
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+# Baseline (current production)
+baseline:
+  imageTag: "v1.0.0"  # Current production version
+  replicaCount: 6      # Will be calculated as total - canary if not specified
+
+# Canary (new version being tested)
+canary:
+  imageTag: "v2.0.0"   # New version to test
+  replicaCount: 0      # Start with 0, scale up gradually (10% = 1, 25% = 2, etc.)
+  autoscaling:
+    minReplicas: 0
+    maxReplicas: 3
+
+# Canary traffic percentage (for service mesh/ingress configuration)
+canaryTrafficPercentage: 10  # Start with 10% traffic to canary
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+# Rolling strategy configuration
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 1
+
+# Enhanced health checks for canary
+healthCheck:
+  enabled: true
+  liveness:
+    path: /health
+    port: 8080
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readiness:
+    path: /ready
+    port: 8080
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 2
+
+# Canary deployment specific settings
+canary:
+  # Time to wait before increasing canary percentage (in minutes)
+  promotionDelay: 30
+  # Maximum canary percentage before full rollout
+  maxPercentage: 50
+  # Auto-promote if metrics are good
+  autoPromote: false
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Resource limits
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Anti-affinity to spread pods across nodes
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app.kubernetes.io/name
+            operator: In
+            values:
+            - canary-app
+        topologyKey: kubernetes.io/hostname
+
+# Environment configuration
+env: "production"
+logLevel: "info"
+
+# ConfigMap data
+config:
+  database_url: "postgresql://user:pass@db:5432/myapp"
+  redis_url: "redis://redis:6379"
+  cache_ttl: "300"
+
+# Override names
+nameOverride: ""
+fullnameOverride: ""
+

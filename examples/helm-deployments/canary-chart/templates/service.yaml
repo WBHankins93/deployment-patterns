@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "canary-app.fullname" . }}
+  labels:
+    {{- include "canary-app.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "canary-app.selectorLabels" . | nindent 4 }}
+    # Service routes to both baseline and canary
+    # Traffic splitting handled by service mesh or ingress
+
