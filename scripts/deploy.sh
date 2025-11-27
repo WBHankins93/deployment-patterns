@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Enhanced Big Bang Deployment Script
-# Usage: ./deploy.sh [version] [--rollback]
+# Usage: ./scripts/deploy.sh [version] [--rollback]
 
 VERSION=${1:-"latest"}
 ROLLBACK_FLAG=${2:-""}

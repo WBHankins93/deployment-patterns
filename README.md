@@ -120,8 +120,8 @@ deployment-patterns-guide/
 │   │   └── grafana-dashboards/     # Deployment monitoring
 │   └── docker-compose/             # Local testing environments
 └── 🔧 scripts/
-    ├── deploy.sh                   # Enhanced big bang script
-    ├── rolling-batch-deploy.sh     # Enhanced rolling script
+    ├── deploy.sh                   # Big Bang deployment script
+    ├── rolling-batch-deploy.sh     # Rolling deployment script
     └── rollback.sh                 # Emergency rollback utilities
 ```
 
