@@ -289,9 +289,17 @@ kubectl rollout undo deployment/myapp
 ## 📚 Additional Resources
 
 ### Learning Materials
+- **[Getting Started](docs/getting-started.md)** - Beginner's tutorial and first steps
 - **[Decision Guide](docs/decision-guide.md)** - Choose the right pattern
+- **[Best Practices](docs/best-practices.md)** - Deployment best practices and checklists
+- **[Glossary](docs/glossary.md)** - Terminology and definitions
 - **[Monitoring Guide](docs/monitoring-guide.md)** - Observability best practices
 - **[Troubleshooting](docs/troubleshooting.md)** - Common issues & solutions
+- **[Common Pitfalls](docs/common-pitfalls.md)** - Mistakes to avoid
+- **[Security](docs/security.md)** - Security considerations
+- **[Testing Strategies](docs/testing-strategies.md)** - Testing approaches
+- **[Cost Analysis](docs/cost-analysis.md)** - Infrastructure costs and optimization
+- **[Migration Guide](docs/migration-guide.md)** - Moving between patterns
 
 ### External References
 - [Kubernetes Deployment Strategies](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
