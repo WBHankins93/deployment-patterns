@@ -1,0 +1,157 @@
+{
+  "dashboard": {
+    "title": "Deployment Patterns - Overview",
+    "tags": ["deployment", "patterns", "kubernetes"],
+    "timezone": "browser",
+    "schemaVersion": 27,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Deployment Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "kube_deployment_status_replicas_available / kube_deployment_spec_replicas",
+            "legendFormat": "{{deployment}}"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "orientation": "auto",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "textMode": "auto"
+        }
+      },
+      {
+        "id": 2,
+        "title": "Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{code=~\"5..\"}[5m]) / rate(http_requests_total[5m])",
+            "legendFormat": "{{service}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 6, "y": 0},
+        "yaxes": [
+          {
+            "format": "percentunit",
+            "label": "Error Rate"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total[5m])",
+            "legendFormat": "{{service}} - {{code}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Requests/sec"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Latency (P50, P95, P99)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "P50 - {{service}}"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "P95 - {{service}}"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "P99 - {{service}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "yaxes": [
+          {
+            "format": "s",
+            "label": "Latency"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Pod Status by Version",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "kube_pod_info",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {},
+              "indexByName": {},
+              "renameByName": {
+                "Value": "Pod Count"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Resource Utilization",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(container_cpu_usage_seconds_total[5m])",
+            "legendFormat": "CPU - {{pod}}"
+          },
+          {
+            "expr": "container_memory_usage_bytes",
+            "legendFormat": "Memory - {{pod}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "yaxes": [
+          {
+            "format": "short",
+            "label": "Usage"
+          }
+        ]
+      }
+    ],
+    "annotations": {
+      "list": [
+        {
+          "name": "Deployments",
+          "datasource": "Prometheus",
+          "enable": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "tags": ["deployment"],
+          "type": "tags"
+        }
+      ]
+    }
+  }
+}
+

@@ -1,0 +1,417 @@
+# Prometheus Alert Rules for Deployment Patterns
+# 
+# Usage:
+#   kubectl create configmap prometheus-alerts \
+#     --from-file=prometheus-alerts.yaml \
+#     -n monitoring
+#
+# Or add to Prometheus configuration:
+#   rule_files:
+#     - "prometheus-alerts.yaml"
+
+groups:
+  - name: deployment_patterns
+    interval: 30s
+    rules:
+      # ============================================
+      # General Deployment Alerts
+      # ============================================
+      
+      - alert: DeploymentFailure
+        expr: |
+          (
+            kube_deployment_status_replicas_unavailable > 0
+            or
+            kube_deployment_status_condition{condition="Progressing",status="false"} == 1
+          )
+          and
+          kube_deployment_status_replicas_available < kube_deployment_spec_replicas
+        for: 5m
+        labels:
+          severity: critical
+          component: deployment
+        annotations:
+          summary: "Deployment {{ $labels.deployment }} has failed"
+          description: |
+            Deployment {{ $labels.deployment }} in namespace {{ $labels.namespace }} 
+            has {{ $value }} unavailable replicas and is not progressing.
+            Check pod logs and events for details.
+
+      - alert: DeploymentStuck
+        expr: |
+          (
+            kube_deployment_status_observed_generation != kube_deployment_metadata_generation
+            or
+            kube_deployment_status_replicas_updated != kube_deployment_spec_replicas
+          )
+          and
+          (
+            time() - kube_deployment_status_condition{condition="Progressing",status="true"}.last_transition_time
+          ) > 600
+        for: 10m
+        labels:
+          severity: warning
+          component: deployment
+        annotations:
+          summary: "Deployment {{ $labels.deployment }} is stuck"
+          description: |
+            Deployment {{ $labels.deployment }} has been in progress for more than 10 minutes.
+            Current status: {{ $value }} replicas updated out of {{ $labels.replicas }} desired.
+
+      - alert: HighErrorRateAfterDeployment
+        expr: |
+          (
+            rate(http_requests_total{code=~"5.."}[5m]) 
+            / 
+            rate(http_requests_total[5m])
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: application
+        annotations:
+          summary: "High error rate detected after deployment"
+          description: |
+            Error rate is {{ $value | humanizePercentage }} for service {{ $labels.service }}.
+            This may indicate a deployment issue. Consider rolling back.
+
+      - alert: PodCrashLoop
+        expr: |
+          rate(kube_pod_container_status_restarts_total[15m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: pod
+        annotations:
+          summary: "Pod {{ $labels.pod }} is crash looping"
+          description: |
+            Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} 
+            has restarted {{ $value }} times in the last 15 minutes.
+            Check pod logs for errors.
+
+      # ============================================
+      # Big Bang Deployment Alerts
+      # ============================================
+      
+      - alert: BigBangServiceDown
+        expr: |
+          (
+            up{job="kubernetes-pods"} == 0
+            or
+            kube_deployment_status_replicas_available == 0
+          )
+          and
+          kube_deployment_spec_replicas > 0
+        for: 2m
+        labels:
+          severity: critical
+          pattern: big-bang
+        annotations:
+          summary: "Big Bang deployment: Service is down"
+          description: |
+            Service {{ $labels.deployment }} is completely unavailable after Big Bang deployment.
+            All {{ $labels.replicas }} replicas are down. Immediate rollback required.
+
+      - alert: BigBangSlowRecovery
+        expr: |
+          (
+            time() - kube_deployment_status_condition{condition="Available",status="true"}.last_transition_time
+          ) > 300
+          and
+          kube_deployment_status_replicas_available < kube_deployment_spec_replicas
+        for: 5m
+        labels:
+          severity: warning
+          pattern: big-bang
+        annotations:
+          summary: "Big Bang deployment: Slow recovery"
+          description: |
+            Service {{ $labels.deployment }} is taking longer than 5 minutes to recover 
+            after Big Bang deployment. {{ $value }} seconds since deployment started.
+
+      # ============================================
+      # Rolling Deployment Alerts
+      # ============================================
+      
+      - alert: RollingDeploymentStuck
+        expr: |
+          kube_deployment_status_replicas_updated != kube_deployment_spec_replicas
+          and
+          (
+            time() - kube_deployment_status_condition{condition="Progressing",status="true"}.last_transition_time
+          ) > 600
+        for: 10m
+        labels:
+          severity: warning
+          pattern: rolling
+        annotations:
+          summary: "Rolling deployment is stuck"
+          description: |
+            Rolling deployment for {{ $labels.deployment }} has been stuck for 10+ minutes.
+            {{ $value }} replicas updated out of {{ $labels.replicas }} desired.
+            Consider pausing and investigating.
+
+      - alert: RollingDeploymentMixedVersions
+        expr: |
+          (
+            count by (deployment) (
+              kube_pod_info{created_by_kind="ReplicaSet"}
+            ) 
+            != 
+            count by (deployment) (
+              kube_pod_info{created_by_kind="ReplicaSet"}
+              and
+              on(pod) kube_pod_status_phase{phase="Running"}
+            )
+          )
+          and
+          kube_deployment_spec_strategy_type == "RollingUpdate"
+        for: 15m
+        labels:
+          severity: info
+          pattern: rolling
+        annotations:
+          summary: "Rolling deployment has mixed versions"
+          description: |
+            Rolling deployment for {{ $labels.deployment }} has been in mixed-version state 
+            for more than 15 minutes. This may indicate a slow rollout or stuck deployment.
+
+      - alert: RollingDeploymentHighErrorRate
+        expr: |
+          (
+            rate(http_requests_total{code=~"5.."}[2m]) 
+            / 
+            rate(http_requests_total[2m])
+          ) > 0.1
+          and
+          kube_deployment_spec_strategy_type == "RollingUpdate"
+        for: 2m
+        labels:
+          severity: critical
+          pattern: rolling
+        annotations:
+          summary: "High error rate during rolling deployment"
+          description: |
+            Error rate is {{ $value | humanizePercentage }} during rolling deployment 
+            of {{ $labels.deployment }}. Consider pausing the rollout.
+
+      # ============================================
+      # Blue-Green Deployment Alerts
+      # ============================================
+      
+      - alert: BlueGreenEnvironmentUnhealthy
+        expr: |
+          (
+            kube_deployment_status_replicas_available 
+            < 
+            kube_deployment_spec_replicas * 0.8
+          )
+          and
+          on(deployment) kube_deployment_labels{deployment_strategy="blue-green"} == 1
+        for: 5m
+        labels:
+          severity: warning
+          pattern: blue-green
+        annotations:
+          summary: "Blue-Green environment unhealthy"
+          description: |
+            {{ $labels.environment }} environment for {{ $labels.deployment }} 
+            has only {{ $value }} available replicas out of {{ $labels.replicas }} desired.
+            Do not switch traffic until resolved.
+
+      - alert: BlueGreenTrafficSwitchFailure
+        expr: |
+          (
+            sum(rate(http_requests_total{environment="green"}[5m])) 
+            / 
+            sum(rate(http_requests_total[5m]))
+          ) < 0.95
+          and
+          on(deployment) kube_deployment_labels{deployment_strategy="blue-green",active_environment="green"} == 1
+        for: 2m
+        labels:
+          severity: critical
+          pattern: blue-green
+        annotations:
+          summary: "Blue-Green traffic switch incomplete"
+          description: |
+            Traffic switch to Green environment appears incomplete.
+            Only {{ $value | humanizePercentage }} of traffic is reaching Green.
+            Verify load balancer and DNS configuration.
+
+      # ============================================
+      # Canary Deployment Alerts
+      # ============================================
+      
+      - alert: CanaryHighErrorRate
+        expr: |
+          (
+            rate(http_requests_total{version="canary",code=~"5.."}[5m]) 
+            / 
+            rate(http_requests_total{version="canary"}[5m])
+          ) 
+          > 
+          (
+            rate(http_requests_total{version="baseline",code=~"5.."}[5m]) 
+            / 
+            rate(http_requests_total{version="baseline"}[5m])
+          ) * 2
+        for: 3m
+        labels:
+          severity: warning
+          pattern: canary
+        annotations:
+          summary: "Canary deployment showing high error rate"
+          description: |
+            Canary version has {{ $value | humanizePercentage }} error rate, 
+            which is 2x higher than baseline. Consider reducing canary traffic or rolling back.
+
+      - alert: CanaryPerformanceDegradation
+        expr: |
+          (
+            histogram_quantile(0.95, 
+              rate(http_request_duration_seconds_bucket{version="canary"}[5m])
+            )
+            /
+            histogram_quantile(0.95, 
+              rate(http_request_duration_seconds_bucket{version="baseline"}[5m])
+            )
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+          pattern: canary
+        annotations:
+          summary: "Canary deployment showing performance degradation"
+          description: |
+            Canary P95 latency is {{ $value }}x higher than baseline.
+            Consider investigating performance issues before full rollout.
+
+      - alert: CanaryTrafficImbalance
+        expr: |
+          abs(
+            (
+              sum(rate(http_requests_total{version="canary"}[5m])) 
+              / 
+              sum(rate(http_requests_total[5m]))
+            ) 
+            - 
+            (kube_deployment_labels{version="canary"}.canary_traffic_percentage / 100)
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          pattern: canary
+        annotations:
+          summary: "Canary traffic distribution incorrect"
+          description: |
+            Canary is receiving {{ $value | humanizePercentage }} of traffic, 
+            but should receive {{ $labels.canary_traffic_percentage }}%.
+            Verify load balancer or service mesh configuration.
+
+      # ============================================
+      # Resource and Infrastructure Alerts
+      # ============================================
+      
+      - alert: DeploymentResourceExhaustion
+        expr: |
+          (
+            kube_pod_container_resource_requests{resource="cpu"} 
+            > 
+            kube_node_status_allocatable{resource="cpu"} * 0.9
+          )
+          or
+          (
+            kube_pod_container_resource_requests{resource="memory"} 
+            > 
+            kube_node_status_allocatable{resource="memory"} * 0.9
+          )
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "Cluster resource exhaustion during deployment"
+          description: |
+            Cluster resources are {{ $value | humanizePercentage }} utilized.
+            Deployment may be delayed or fail. Consider scaling the cluster.
+
+      - alert: ImagePullFailure
+        expr: |
+          kube_pod_container_status_waiting_reason{reason="ImagePullBackOff"} == 1
+          or
+          kube_pod_container_status_waiting_reason{reason="ErrImagePull"} == 1
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "Image pull failure for {{ $labels.pod }}"
+          description: |
+            Pod {{ $labels.pod }} cannot pull image {{ $labels.image }}.
+            Check image registry access and image availability.
+
+      - alert: HealthCheckFailure
+        expr: |
+          kube_pod_container_status_ready{condition="false"} == 1
+        for: 5m
+        labels:
+          severity: warning
+          component: application
+        annotations:
+          summary: "Health check failing for {{ $labels.pod }}"
+          description: |
+            Pod {{ $labels.pod }} health checks are failing.
+            Container may be unhealthy or startup is slow.
+            Check application logs and health endpoint.
+
+      # ============================================
+      # Post-Deployment Validation Alerts
+      # ============================================
+      
+      - alert: PostDeploymentRegression
+        expr: |
+          (
+            histogram_quantile(0.95, 
+              rate(http_request_duration_seconds_bucket[5m])
+            )
+            >
+            histogram_quantile(0.95, 
+              rate(http_request_duration_seconds_bucket[15m] offset 1h)
+            ) * 1.5
+          )
+          and
+          (
+            time() - kube_deployment_status_condition{condition="Progressing",status="false"}.last_transition_time
+          ) < 1800
+        for: 10m
+        labels:
+          severity: warning
+          component: performance
+        annotations:
+          summary: "Performance regression detected after deployment"
+          description: |
+            P95 latency is {{ $value }}x higher than baseline from 1 hour ago.
+            This may indicate a performance regression in the new deployment.
+
+      - alert: DeploymentSuccessRateLow
+        expr: |
+          (
+            sum(rate(http_requests_total{code=~"2.."}[5m])) 
+            / 
+            sum(rate(http_requests_total[5m]))
+          ) < 0.95
+          and
+          (
+            time() - kube_deployment_status_condition{condition="Progressing",status="false"}.last_transition_time
+          ) < 1800
+        for: 10m
+        labels:
+          severity: warning
+          component: application
+        annotations:
+          summary: "Low success rate after deployment"
+          description: |
+            Success rate is {{ $value | humanizePercentage }} after deployment, 
+            below the 95% threshold. Investigate and consider rollback.
+
