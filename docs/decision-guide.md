@@ -10,6 +10,12 @@ Are you deploying to production with users?
    │  ├─ YES → Big Bang (with maintenance window)
    │  └─ NO → Continue below
    │
+   ├─ Need production validation with zero user risk?
+   │  └─ YES → Shadow (traffic mirroring)
+   │
+   ├─ Need to compare versions with real user data?
+   │  └─ YES → A/B Testing (data-driven decisions)
+   │
    ├─ Do you have extra infrastructure capacity?
    │  ├─ YES → Blue-Green (instant rollback)
    │  └─ NO → Continue below
@@ -26,17 +32,19 @@ Are you deploying to production with users?
 
 ## 📊 Comprehensive Comparison Matrix
 
-| Factor | Big Bang | Rolling | Blue-Green | Canary | Feature Flags |
-|--------|----------|---------|------------|---------|---------------|
-| **Deployment Speed** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **Safety/Risk** | ⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
-| **Rollback Speed** | ⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **Resource Usage** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ |
-| **Implementation Complexity** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐ |
-| **Zero Downtime** | ❌ | ✅ | ✅ | ✅ | ✅ |
-| **Gradual Validation** | ❌ | ⚠️ | ❌ | ✅ | ✅ |
-| **User Impact Control** | ❌ | ⚠️ | ❌ | ✅ | ✅ |
-| **Infrastructure Cost** | 💲 | 💲 | 💲💲💲 | 💲💲 | 💲💲 |
+| Factor | Big Bang | Rolling | Blue-Green | Canary | Shadow | A/B Testing | Feature Flags |
+|--------|----------|---------|------------|---------|--------|-------------|---------------|
+| **Deployment Speed** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐⭐ |
+| **Safety/Risk** | ⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ |
+| **Rollback Speed** | ⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| **Resource Usage** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐⭐⭐ |
+| **Implementation Complexity** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐ |
+| **Zero Downtime** | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Gradual Validation** | ❌ | ⚠️ | ❌ | ✅ | ❌ | ✅ | ✅ |
+| **User Impact Control** | ❌ | ⚠️ | ❌ | ✅ | ✅ | ✅ | ✅ |
+| **User Impact** | 🔴 High | 🟡 Medium | 🟢 None | 🟡 Low | 🟢 None | 🟡 Partial | 🟡 Partial |
+| **Production Validation** | ❌ | ⚠️ | ✅ | ⚠️ | ✅ | ✅ | ⚠️ |
+| **Infrastructure Cost** | 💲 | 💲 | 💲💲💲 | 💲💲 | 💲💲 | 💲💲 | 💲💲 |
 
 ---
 
@@ -112,6 +120,36 @@ Are you deploying to production with users?
 
 ---
 
+### 👻 Shadow Deployment
+**Perfect for:**
+- Production validation with zero user risk
+- Performance testing with real traffic
+- Critical systems requiring thorough validation
+- Catching edge cases before user exposure
+
+**Real-world scenarios:**
+- Payment processing system validation
+- API gateway testing new routing rules
+- Database query optimization testing
+- Machine learning model validation
+
+---
+
+### 🧪 A/B Testing Deployment
+**Perfect for:**
+- Data-driven feature comparison
+- User experience optimization
+- Business metrics measurement (conversion, revenue)
+- Making deployment decisions based on metrics
+
+**Real-world scenarios:**
+- E-commerce checkout flow optimization
+- Social media feed algorithm changes
+- SaaS pricing page comparison
+- Mobile app onboarding flow testing
+
+---
+
 ## 🏭 Industry Use Cases
 
 ### Startup (< 100 users)
@@ -152,8 +190,10 @@ Primary: Blue-Green + Canary + Feature Flags
 4. **Canary** - When you need user validation
 
 ### Advanced Level
-5. **Feature Flags** - When you need runtime control
-6. **Hybrid Strategies** - Combining multiple patterns
+5. **Shadow** - When you need production validation with zero risk
+6. **A/B Testing** - When you need data-driven feature decisions
+7. **Feature Flags** - When you need runtime control
+8. **Hybrid Strategies** - Combining multiple patterns
 
 ---
 
@@ -183,6 +223,19 @@ Primary: Blue-Green + Canary + Feature Flags
 - Your team lacks experience with configuration management
 - The application architecture doesn't support runtime toggles
 - You're not prepared for flag debt management
+
+### ❌ Don't Use Shadow When:
+- You lack traffic mirroring infrastructure (service mesh, advanced LB)
+- Resource costs are a major constraint (2x infrastructure)
+- You need to test user-facing features (UI, responses)
+- Simple staging environment testing is sufficient
+
+### ❌ Don't Use A/B Testing When:
+- You lack analytics/metrics infrastructure
+- You need immediate deployment (tests require time)
+- Sample size is too small for statistical significance
+- You can't ensure consistent user assignment
+- Simple feature flags are sufficient
 
 ---
 
@@ -218,6 +271,25 @@ Primary: Blue-Green + Canary + Feature Flags
 2. Instrument application code
 3. Set up flag management processes
 4. Implement flag lifecycle management
+```
+
+### Adding Shadow Deployment
+```
+1. Set up traffic mirroring infrastructure (Istio, Nginx, etc.)
+2. Deploy shadow version alongside active
+3. Configure traffic mirroring (100% or percentage)
+4. Monitor shadow version metrics separately
+5. Validate before proceeding to production deployment
+```
+
+### Adding A/B Testing
+```
+1. Implement user segmentation logic
+2. Set up traffic splitting (50/50 or other ratio)
+3. Configure analytics and metrics collection
+4. Define success criteria and hypothesis
+5. Run test for sufficient duration
+6. Analyze results and make data-driven decision
 ```
 
 ---
