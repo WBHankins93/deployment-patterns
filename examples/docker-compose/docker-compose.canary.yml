@@ -1,0 +1,86 @@
+# Docker Compose for Canary Deployment Testing
+# 
+# Usage:
+#   docker-compose -f docker-compose.canary.yml up -d
+#
+# To simulate canary deployment:
+#   1. Start with baseline only
+#   2. Deploy canary with small percentage (e.g., 10%)
+#   3. Gradually increase canary traffic
+#   4. Monitor and either rollback or complete rollout
+
+version: '3.8'
+
+services:
+  # Baseline version (current production)
+  app-baseline:
+    image: nginx:1.21-alpine  # Change to your app image
+    container_name: canary-app-baseline
+    environment:
+      - ENV=production
+      - VERSION=v1.0.0
+      - VARIANT=baseline
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app-network
+    labels:
+      - "deployment.pattern=canary"
+      - "deployment.variant=baseline"
+      - "deployment.version=v1.0.0"
+
+  # Canary version (new version being tested)
+  app-canary:
+    image: nginx:1.22-alpine  # Change to your new app image
+    container_name: canary-app-canary
+    environment:
+      - ENV=production
+      - VERSION=v2.0.0
+      - VARIANT=canary
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app-network
+    labels:
+      - "deployment.pattern=canary"
+      - "deployment.variant=canary"
+      - "deployment.version=v2.0.0"
+    deploy:
+      replicas: 0  # Start with 0, scale up gradually
+
+  # Load balancer with traffic splitting
+  nginx-lb:
+    image: nginx:alpine
+    container_name: canary-lb
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx-canary-lb.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app-baseline
+      - app-canary
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+# Canary deployment simulation steps:
+# 1. Start with baseline only: docker-compose -f docker-compose.canary.yml up -d --scale app-baseline=6 --scale app-canary=0
+# 2. Deploy canary 10%: Update nginx-canary-lb.conf to 10% canary, scale canary=1
+# 3. Monitor metrics for 30 minutes
+# 4. Increase to 25%: Update config, scale canary=2
+# 5. Monitor metrics
+# 6. Increase to 50%: Update config, scale canary=3
+# 7. Monitor metrics
+# 8. Complete: Update config to 100% canary, scale baseline=0, canary=6
+

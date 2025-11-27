@@ -1,0 +1,91 @@
+# Docker Compose for Shadow Deployment Testing (Simplified)
+# 
+# Note: True shadow deployment requires service mesh (Istio) or advanced
+# load balancer with mirroring. This is a simplified version for local testing.
+#
+# Usage:
+#   docker-compose -f docker-compose.shadow.yml up -d
+#
+# To simulate shadow deployment:
+#   1. Active version serves all traffic
+#   2. Shadow version receives mirrored traffic (doesn't respond to users)
+#   3. Monitor shadow version metrics
+#   4. Validate before proceeding to production
+
+version: '3.8'
+
+services:
+  # Active version (serving users)
+  app-active:
+    image: nginx:1.21-alpine  # Change to your app image
+    container_name: shadow-app-active
+    ports:
+      - "8080:80"  # Active version serves users
+    environment:
+      - ENV=production
+      - VERSION=v1.0.0
+      - ENVIRONMENT=active
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app-network
+    labels:
+      - "deployment.pattern=shadow"
+      - "deployment.environment=active"
+      - "deployment.version=v1.0.0"
+
+  # Shadow version (receives mirrored traffic, doesn't serve users)
+  app-shadow:
+    image: nginx:1.22-alpine  # Change to your new app image
+    container_name: shadow-app-shadow
+    # No ports exposed - shadow doesn't serve user traffic
+    environment:
+      - ENV=production
+      - VERSION=v2.0.0
+      - ENVIRONMENT=shadow
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app-network
+    labels:
+      - "deployment.pattern=shadow"
+      - "deployment.environment=shadow"
+      - "deployment.version=v2.0.0"
+
+  # Load balancer with traffic mirroring
+  nginx-lb:
+    image: nginx:alpine
+    container_name: shadow-lb
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx-shadow-lb.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app-active
+      - app-shadow
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+# Shadow deployment simulation:
+# 1. Start both versions: docker-compose -f docker-compose.shadow.yml up -d
+# 2. Traffic goes to active, shadow receives mirrored copy
+# 3. Monitor shadow version: docker logs shadow-app-shadow -f
+# 4. Check shadow metrics (simulated): curl http://localhost:8000/shadow/metrics
+# 5. Validate shadow performance and errors
+# 6. If validated, proceed to production deployment using another pattern
+
+# Note: In production, use Istio VirtualService with mirror configuration
+# or Nginx with mirror module for true traffic mirroring
+

@@ -7,6 +7,9 @@ This directory contains Docker Compose configurations for testing deployment pat
 - **`docker-compose.big-bang.yml`** - Big Bang deployment testing
 - **`docker-compose.rolling.yml`** - Rolling deployment testing
 - **`docker-compose.blue-green.yml`** - Blue-Green deployment testing
+- **`docker-compose.canary.yml`** - Canary deployment testing
+- **`docker-compose.shadow.yml`** - Shadow deployment testing (simplified)
+- **`docker-compose.ab-testing.yml`** - A/B Testing deployment
 - **`nginx-*.conf`** - Nginx load balancer configurations
 - **`health-check/`** - Simple health check endpoint
 
@@ -83,6 +86,87 @@ docker exec blue-green-lb nginx -s reload
 
 # Cleanup
 docker-compose -f docker-compose.blue-green.yml down
+```
+
+### Canary Deployment
+
+```bash
+# Start with baseline only
+docker-compose -f docker-compose.canary.yml up -d --scale app-baseline=6 --scale app-canary=0
+
+# Deploy canary at 10% (update nginx-canary-lb.conf to 10% canary)
+docker-compose -f docker-compose.canary.yml up -d --scale app-canary=1
+docker exec canary-lb nginx -s reload
+
+# Monitor canary metrics
+curl http://localhost:8000/canary/health
+
+# Gradually increase canary percentage
+# Update nginx-canary-lb.conf and reload nginx
+# Scale canary as needed: --scale app-canary=2, --scale app-canary=3, etc.
+
+# Complete rollout (if canary successful)
+# Update config to 100% canary, scale baseline=0, canary=6
+
+# Rollback (if canary fails)
+docker-compose -f docker-compose.canary.yml up -d --scale app-canary=0
+docker exec canary-lb nginx -s reload
+
+# Cleanup
+docker-compose -f docker-compose.canary.yml down
+```
+
+### Shadow Deployment
+
+```bash
+# Start both versions
+docker-compose -f docker-compose.shadow.yml up -d
+
+# Active version serves users on port 8080
+curl http://localhost:8080/health
+
+# Shadow receives mirrored traffic (check logs)
+docker logs shadow-app-shadow -f
+
+# Monitor shadow metrics
+curl http://localhost:8000/shadow/metrics
+curl http://localhost:8000/shadow/health
+
+# Validate shadow performance
+# If validated, proceed to production using another pattern
+
+# Cleanup
+docker-compose -f docker-compose.shadow.yml down
+```
+
+### A/B Testing Deployment
+
+```bash
+# Start both variants
+docker-compose -f docker-compose.ab-testing.yml up -d
+
+# Check A/B test status
+curl http://localhost:8000/ab-test/status
+
+# Test Variant A directly
+curl http://localhost:8000/variant-a/health
+
+# Test Variant B directly
+curl http://localhost:8000/variant-b/health
+
+# Monitor metrics for both variants
+curl http://localhost:8000/metrics/a
+curl http://localhost:8000/metrics/b
+
+# Compare metrics and determine winner
+# Route 100% to winner: Update nginx-ab-testing-lb.conf
+docker exec ab-test-lb nginx -s reload
+
+# Scale down losing variant
+docker-compose -f docker-compose.ab-testing.yml up -d --scale app-variant-a=0
+
+# Cleanup
+docker-compose -f docker-compose.ab-testing.yml down
 ```
 
 ## 🔧 Customization

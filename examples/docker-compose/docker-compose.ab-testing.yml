@@ -1,0 +1,83 @@
+# Docker Compose for A/B Testing Deployment
+# 
+# Usage:
+#   docker-compose -f docker-compose.ab-testing.yml up -d
+#
+# To simulate A/B test:
+#   1. Deploy both variants (A and B)
+#   2. Configure traffic split (e.g., 50/50)
+#   3. Monitor metrics for both variants
+#   4. Compare results and determine winner
+#   5. Route all traffic to winning variant
+
+version: '3.8'
+
+services:
+  # Variant A (Control)
+  app-variant-a:
+    image: nginx:1.21-alpine  # Change to your app image
+    container_name: ab-test-app-variant-a
+    environment:
+      - ENV=production
+      - VERSION=v1.0.0
+      - VARIANT=A
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app-network
+    labels:
+      - "deployment.pattern=ab-testing"
+      - "deployment.variant=A"
+      - "deployment.version=v1.0.0"
+
+  # Variant B (Test)
+  app-variant-b:
+    image: nginx:1.22-alpine  # Change to your test app image
+    container_name: ab-test-app-variant-b
+    environment:
+      - ENV=production
+      - VERSION=v2.0.0
+      - VARIANT=B
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app-network
+    labels:
+      - "deployment.pattern=ab-testing"
+      - "deployment.variant=B"
+      - "deployment.version=v2.0.0"
+
+  # Load balancer with A/B traffic splitting
+  nginx-lb:
+    image: nginx:alpine
+    container_name: ab-test-lb
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx-ab-testing-lb.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app-variant-a
+      - app-variant-b
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+# A/B Testing simulation:
+# 1. Start both variants: docker-compose -f docker-compose.ab-testing.yml up -d
+# 2. Traffic split 50/50 (configured in nginx-ab-testing-lb.conf)
+# 3. Monitor metrics for both variants
+# 4. Compare: conversion rate, revenue, engagement, etc.
+# 5. Determine winner based on metrics
+# 6. Route 100% traffic to winner: Update nginx config, scale down loser
+
